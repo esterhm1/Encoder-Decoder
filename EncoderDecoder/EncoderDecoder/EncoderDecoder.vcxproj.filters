@@ -18,8 +18,13 @@
     <ClCompile Include="EncoderDecoder.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="encoder.c">
+    <ClCompile Include="Encoder.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Encoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
