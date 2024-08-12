@@ -1,0 +1,2 @@
+Divide the data into blocks
+Generate parity bits for each block

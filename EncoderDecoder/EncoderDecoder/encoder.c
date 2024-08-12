@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "Encoder.h"
+#include "LogHistory.h"
 #define _CRT_SECURE_NO_WARNINGS
 
 int MultyXor(void* data) {
@@ -158,9 +159,11 @@ void blockEncode(void* block, char* protectionFileName){
 }
 
 void encode(char* data, long length){
+	logAction("Divide the data into blocks");
 	char* protectionFileName = "output.bin";
 	void* ptr;
 	int index = 0;
+	logAction("Generate parity bits for each block");
 	while (index + BLOCK_SIZE <= length)
 	{
 		blockEncode(data, protectionFileName);

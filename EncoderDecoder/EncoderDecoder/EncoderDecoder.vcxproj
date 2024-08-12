@@ -129,9 +129,11 @@
   <ItemGroup>
     <ClCompile Include="Encoder.c" />
     <ClCompile Include="EncoderDecoder.c" />
+    <ClCompile Include="LogHistory.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Encoder.h" />
+    <ClInclude Include="LogHistory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
