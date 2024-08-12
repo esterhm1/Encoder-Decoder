@@ -4,15 +4,17 @@
 #include <stdlib.h>
 #define _CRT_SECURE_NO_WARNINGS
 #define BLOCK_SIZE 8
+#define HAMMING1_SIZE 4
+#define HAMMING2_SIZE 3
 
 
 
 #pragma pack(push, 1)
 
 typedef struct ProtectionData {
-	unsigned char parityBit;
-	char* hamming1;
-	char* hamming2;
+	unsigned char parityBit : 1;
+	unsigned int hamming1 : HAMMING1_SIZE;
+	unsigned int hamming2 : HAMMING2_SIZE;
 }ProtectionData;
 
 #pragma pack(pop)
@@ -118,20 +120,28 @@ void binary_represent(void* data, int bits_number) {
 	printf("\n");
 }
 
+void print_binary(unsigned int num) {
+	const int BITS = sizeof(num) * 8;  // מספר הביטים ב-unsigned int
 
-char* hamming_encode(const void* data, size_t len, int skipped) {
+	// נשתמש בלולאה להדפיס את כל הביטים מהכי גבוה לנמוך ביותר
+	for (int i = BITS - 1; i >= 0; --i) {
+		// הדפס את הביט המתאים
+		printf("%d", (num >> i) & 1);
+
+		// הוסף רווח אחרי כל 8 ביטים
+		if (i % 8 == 0 && i != 0) {
+			printf(" ");
+		}
+	}
+
+	// הדפס שורה חדשה בסוף
+	printf("\n");
+}
+
+
+uint64_t hamming_encode(const void* data, size_t len, int skipped) {
 	int number_of_parity_bits = calculate_number_of_parity_bits_for_block(len / skipped);
-
-	// Allocate memory for storing parity bits
-	unsigned char* buffer = (unsigned char*)malloc((number_of_parity_bits + 7) / 8);
-	if (buffer == NULL) {
-		return NULL; // Handle allocation failure
-	}
-
-	// Initialize buffer to zero
-	for (int i = 0; i < (number_of_parity_bits + 7) / 8; i++) {
-		buffer[i] = 0;
-	}
+	uint64_t result = 0;
 
 	// Compute and store the parity bits
 	for (int i = 1; i <= number_of_parity_bits; i++) {
@@ -145,33 +155,75 @@ char* hamming_encode(const void* data, size_t len, int skipped) {
 			}
 		}
 
-		// Store the parity bit in the buffer
+		// Store the parity bit in the result
 		if (this_parity_bit) {
-			buffer[(number_of_parity_bits - i) / 8] |= (1 << ((number_of_parity_bits - i) % 8));
+			result |= (1ULL << (number_of_parity_bits - i));
 		}
 	}
 
-	return buffer;
+	return result;
 }
 
 
-void block_encode(void* block)
+void block_encode(void* block, char* protection_file_name)
 {
 	ProtectionData protection;
 	protection.parityBit = MultyXor(block, BLOCK_SIZE);
 	protection.hamming1 = hamming_encode(block, BLOCK_SIZE, 1);
 	protection.hamming2 = hamming_encode(block, BLOCK_SIZE, 2);
 	FILE* file = NULL;
-	fopen_s(&file, "output.bin", "wb");
+	fopen_s(&file, protection_file_name, "ab");
 	fwrite(&protection, sizeof(protection), 1, file);
 	fclose(file);
 }
+
+void encode(void* data, long length)
+{
+	char* protection_file_name = "output.bin";
+	void* ptr;
+	int index = 0;
+	while (index + BLOCK_SIZE <= length)
+	{
+		block_encode(data, protection_file_name);
+		index += BLOCK_SIZE;
+	}
+
+
+
+}
+
+void read_protection_data() {
+	FILE* file = NULL;
+	fopen_s(&file, "output.bin", "rb"); // Read mode
+	if (file == NULL) {
+		perror("Error opening file");
+		return;
+	}
+
+	fseek(file, 0, SEEK_END); // Move to end of file to get size
+	long file_size = ftell(file);
+	fseek(file, 0, SEEK_SET); // Move back to start of file
+
+	while (ftell(file) < file_size) {
+		ProtectionData d;
+		fread(&d, sizeof(ProtectionData), 1, file);
+		printf("%d\n", d.parityBit);
+		print_binary(d.hamming1);
+		print_binary(d.hamming2);
+
+	}
+
+	fclose(file);
+}
+
 
 
 int main()
 {
 	int data = 3;
-	block_encode(&data);
-	printf("%d\n", sizeof(ProtectionData));
+	encode(&data, sizeof(data) * 8);
+
+
+	//רק לוודא שהכל פועל כשורה
 	read_protection_data();
 }
