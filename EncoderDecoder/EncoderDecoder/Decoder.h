@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdlib.h>
+
 
 #pragma pack(push, 1)
 typedef struct ProtectionData {
