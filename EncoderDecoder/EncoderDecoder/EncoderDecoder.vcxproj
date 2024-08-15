@@ -127,6 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="decoder.c" />
     <ClCompile Include="encoder.c" />
     <ClCompile Include="EncoderDecoder.c" />
   </ItemGroup>
