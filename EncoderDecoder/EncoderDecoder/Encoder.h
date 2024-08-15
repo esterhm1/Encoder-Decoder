@@ -4,14 +4,20 @@
 #define HAMMING2_SIZE 3
 
 #pragma pack(push, 1)
-
 typedef struct ProtectionData {
-	unsigned char parityBit : 1;
-	unsigned int hamming1 : HAMMING1_SIZE;
-	unsigned int hamming2 : HAMMING2_SIZE;
+	unsigned char parityBit : 2;
+	unsigned short dataWithHamming : HAMMING1_SIZE;
+	unsigned char oddHamming : HAMMING2_SIZE;
 }ProtectionData;
-
 #pragma pack(pop)
+
+//#pragma pack(push, 1)
+//typedef struct ProtectionData {
+//	unsigned char parityBit : 1;
+//	unsigned int hamming1 : HAMMING1_SIZE;
+//	unsigned int hamming2 : HAMMING2_SIZE;
+//}ProtectionData;
+//#pragma pack(pop)
 
 int MultyXor(void* data);
 int calculateNumberOfParityBitsForBlock(int block_length);

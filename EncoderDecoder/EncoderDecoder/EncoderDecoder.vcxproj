@@ -127,11 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Decoder.c" />
     <ClCompile Include="Encoder.c" />
     <ClCompile Include="EncoderDecoder.c" />
     <ClCompile Include="LogHistory.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Decoder.h" />
     <ClInclude Include="Encoder.h" />
     <ClInclude Include="LogHistory.h" />
   </ItemGroup>

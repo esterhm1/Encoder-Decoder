@@ -1,2 +1,12 @@
 Divide the data into blocks
 Generate parity bits for each block
+Divide the data into blocks
+Generate parity bits for each block
+Divide the data into blocks
+Generate parity bits for each block
+Divide the data into blocks
+Generate parity bits for each block
+Divide the data into blocks
+Generate parity bits for each block
+Divide the data into blocks
+Generate parity bits for each block

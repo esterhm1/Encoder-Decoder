@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include "Encoder.h"
+//#include "Encoder.h"
+#include "Decoder.h"
 #include "LogHistory.h"
 
 // This two function delete the content that there is in "output.bin" and "log.txt"
@@ -27,20 +28,21 @@ void clearFile2(const char* filename) {
 
 int main()
 {
-    //----------------------------
+ //   //----------------------------
     clearFile1("output.bin");
     clearFile2("log.txt");
-    //----------------------------
+ //   //----------------------------
+ //   //------- logs ------- 
+ //   printLogs();
+ //   //--------------------
 
-	int data = 3;
-	encode(&data, sizeof(data) * 8);
+ //   int data = 1;
+ //   char* protection_file_name = "output.bin";
+ //   encode(&data, sizeof(data) * 8, protection_file_name);
+ //   int wrong = 3;
+ //   decoder(&wrong, sizeof(wrong) * 8, protection_file_name);
 
-
-	//רק לוודא שהכל פועל כשורה
-	readProtectionData();
-
-    //------- logs ------- 
-    printLogs();
-    //--------------------
+	//// To ensure that the program running good
+	//readProtectionData();
 }
 
