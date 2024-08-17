@@ -150,8 +150,8 @@ int hammingEncode(const void* data, int skipped) {
 void blockEncode(void* block, char* protectionFileName){
 	ProtectionData protection;
 	protection.parityBit = MultyXor(block);
-	protection.hamming1 = hammingEncode(block, 1);
-	protection.hamming2 = hammingEncode(block, 2);
+	/*protection.hamming1 = hammingEncode(block, 1);
+	protection.hamming2 = hammingEncode(block, 2);*/
 	FILE* file = NULL;
 	fopen_s(&file, protectionFileName, "ab");
 	fwrite(&protection, sizeof(protection), 1, file);
@@ -188,8 +188,8 @@ void readProtectionData() {
 		ProtectionData d;
 		fread(&d, sizeof(ProtectionData), 1, file);
 		printf("%d\n", d.parityBit);
-		printBinary(d.hamming1);
-		printBinary(d.hamming2);
+	/*	printBinary(d.hamming1);
+		printBinary(d.hamming2);*/
 
 	}
 
