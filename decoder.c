@@ -15,12 +15,14 @@ int hamming1_result(char* encoded_data)
 			}
 		}
 		if (this_parity_bit != get_bit_value(encoded_data, (size_t)pow(2, i - 1)))
+		{
 			result |= 1 << (i - 1);
+		}
 	}
 	return result;
 }
 
-int hamming2_result(char* data, char* hamming)
+int hamming2_result(char* data, MyType hamming)
 {
 	int number_of_parity_bits_for_block = calculate_number_of_parity_bits_for_block(BLOCK_SIZE);
 	int number_of_parity_bits = calculate_number_of_parity_bits_for_block((BLOCK_SIZE + number_of_parity_bits_for_block) / 2);
@@ -35,7 +37,7 @@ int hamming2_result(char* data, char* hamming)
 				this_parity_bit ^= get_bit_value(data, index);
 			}
 		}
-		if (this_parity_bit != get_bit_value(hamming, i))
+		if (this_parity_bit != get_bit_value(&hamming, i))
 		{
 			result |= 1 << (i - 1);
 
@@ -51,7 +53,7 @@ char* original_data(char* encoded_data)
 {
 	int number_of_parity_bits = calculate_number_of_parity_bits_for_block(BLOCK_SIZE);
 	size_t num_bits = BLOCK_SIZE + number_of_parity_bits;
-	size_t num_bytes = (BLOCK_SIZE + 7) / 8; // Round up to nearest byte
+	size_t num_bytes = (num_bits + 7) / 8; // Round up to nearest byte
 
 	char* data = (char*)calloc(num_bytes, sizeof(char));
 	if (data == NULL) {
@@ -60,7 +62,7 @@ char* original_data(char* encoded_data)
 	}
 	for (size_t i = 1; i <= num_bits; i++)
 	{
-		if (!is_power_of_two(i))
+		if (!IS_POWER_OF_TWO(i))
 		{
 			if (get_bit_value(encoded_data, i))
 			{
@@ -92,7 +94,7 @@ int try_change_bit(char* data, int place)
 }
 
 
-void two_bits_swapped(char* encoded_data, char* hamming2)
+void two_bits_swapped(char* encoded_data, MyType hamming2)
 {
 	int error = hamming2_result(encoded_data, hamming2);
 	try_change_bit(encoded_data, error);
@@ -104,42 +106,53 @@ void two_bits_swapped(char* encoded_data, char* hamming2)
 
 char* block_decoder(ProtectionData pd)
 {
-	if (hamming1_result(pd.hamming1) == 0)
+	if (((pd.parityBit & 1) ^ (pd.parityBit >> 1) & 1))
 		return original_data(pd.hamming1);
 	else
 	{
-		if (pd.parityBit != 0 && pd.parityBit != 3)
+		unsigned int error_place = hamming1_result(pd.hamming1);
+		if (error_place == 0)
+		{
+			printf("valid\n");
 			return original_data(pd.hamming1);
 
+		}
 		else
 		{
-			if (pd.parityBit != parity_bit(pd.hamming1, HAMMING1_SIZE))
+			if (pd.parityBit != parity_bit_of_data(pd.hamming1, HAMMING1_SIZE))
 			{
-				change_bit_in_data(pd.hamming1, hamming1_result(pd.hamming1));
+				
+				printf("bit flip in %d\n",error_place);
+				change_bit_in_data(pd.hamming1, error_place);
 				return original_data(pd.hamming1);
 			}
-
 			else
+			{
+				printf("two bits swapped\n");
 				two_bits_swapped(pd.hamming1, pd.hamming2);
+			}
+				
 		}
 	}
-
 	return original_data(pd.hamming1);
 }
+
 
 
 char* decode(ProtectionData* pd, int len)
 {
 	int number_of_blocks = len / BLOCK_SIZE;
-	char* decoded_data = (char*)malloc(number_of_blocks * sizeof(char));
+	if (len % BLOCK_SIZE)
+		number_of_blocks++;
+	char* decoded_data = (char*)malloc(len);
 	char* data_ptr=decoded_data;
 	for (size_t i = 0; i < number_of_blocks; i++)
 	{
 		char* block = block_decoder(pd[i]);
-		while (*block)
-		{
-			*data_ptr++ = *block++;
-		}
+		int num_bytes = BLOCK_SIZE/8;
+		memcpy(data_ptr, block, num_bytes);
+		data_ptr += num_bytes;
+
 	}
 	return decoded_data;
 }
