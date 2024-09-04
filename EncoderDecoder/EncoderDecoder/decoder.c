@@ -1,88 +1,144 @@
-#include "Decoder.h"
-#define DATA_SIZE 100
-#define BLOCK_SIZE_WITH_HAMMING 12
+#include "decoder.h"
 
-int calculate_amount_of_parity_bits(int size) {
-	int count = 0;
-	int power = 1;
-
-	while (power <= size) {
-		count++;
-		power *= 2;
+int hamming1_result(char* encoded_data)
+{
+	int result = 0;
+	int num_bits = calculate_number_of_parity_bits_for_block(BLOCK_SIZE);
+	for (size_t i = 1; i <= num_bits; i++)
+	{
+		int this_parity_bit = 0;
+		for (size_t j = (size_t)pow(2, i - 1) + 1; j <= BLOCK_SIZE + num_bits; j++) {
+			if (j & (size_t)pow(2, i - 1))
+			{
+				this_parity_bit ^= get_bit_value(encoded_data, j);
+			}
+		}
+		if (this_parity_bit != get_bit_value(encoded_data, (size_t)pow(2, i - 1)))
+			result |= 1 << (i - 1);
 	}
+	return result;
+}
 
-	return count;
+int hamming2_result(char* data, char* hamming)
+{
+	int number_of_parity_bits_for_block = calculate_number_of_parity_bits_for_block(BLOCK_SIZE);
+	int number_of_parity_bits = calculate_number_of_parity_bits_for_block((BLOCK_SIZE + number_of_parity_bits_for_block) / 2);
+	int result = 0;
+	for (size_t i = 1; i <= number_of_parity_bits; i++)
+	{
+		int this_parity_bit = 0;
+		for (int j = (int)pow(2, i - 1) + 1; j <= (BLOCK_SIZE + number_of_parity_bits_for_block) / 2 + number_of_parity_bits; j++) {
+			int index = get_adjusted_index(j, 2);
+
+			if (index != -1 && (j & (int)pow(2, i - 1))) {
+				this_parity_bit ^= get_bit_value(data, index);
+			}
+		}
+		if (this_parity_bit != get_bit_value(hamming, i))
+		{
+			result |= 1 << (i - 1);
+
+		}
+
+	}
+	return get_adjusted_index(result, 2);
 }
 
 
-void* extract_data(char* data_with_hamming) {
-	int parity_bits = calculate_amount_of_parity_bits(BLOCK_SIZE_WITH_HAMMING);
-	int only_data_size = BLOCK_SIZE_WITH_HAMMING - parity_bits;
-	char* only_data = (char*)malloc(only_data_size * sizeof(char));
 
-	if (only_data == NULL) {
+char* original_data(char* encoded_data)
+{
+	int number_of_parity_bits = calculate_number_of_parity_bits_for_block(BLOCK_SIZE);
+	size_t num_bits = BLOCK_SIZE + number_of_parity_bits;
+	size_t num_bytes = (BLOCK_SIZE + 7) / 8; // Round up to nearest byte
+
+	char* data = (char*)calloc(num_bytes, sizeof(char));
+	if (data == NULL) {
+		// Handle memory allocation failure
 		return NULL;
 	}
+	for (size_t i = 1; i <= num_bits; i++)
+	{
+		if (!is_power_of_two(i))
+		{
+			if (get_bit_value(encoded_data, i))
+			{
 
-	int index_data_with_hamming = 1, index_only_data = 0;
+				int index = get_adjusted_index(i, 1);
+				data[(index - 1) / 8] |= 1 << (8 - (index) % 8);
+				if (index % 8 == 0)
+					data[(index - 1) / 8] |= 1;
 
-	while (index_data_with_hamming < BLOCK_SIZE_WITH_HAMMING) {
-		// if not power of two add the bit.
-		if ((index_data_with_hamming & (index_data_with_hamming - 1)) != 0) {
-			only_data[index_only_data] = data_with_hamming[index_data_with_hamming];
-			index_only_data++;
+			}
 		}
-		index_data_with_hamming++;
 	}
-
-	return (void*)only_data;
+	return data;
 }
 
-void correct_one_bit_flip(char* dataWithHamming, int place) {
+
+void change_bit_in_data(char* data, int place)
+{
+	data[(place - 1) / 8] ^= (1 << ((8 - place) % 8));
+}
+
+
+int try_change_bit(char* data, int place)
+{
+
+	change_bit_in_data(data, place);
+	return  hamming1_result(data);
 
 }
 
-void correct_two_bit_flip(ProtectionData* protection_struct) {
 
+void two_bits_swapped(char* encoded_data, char* hamming2)
+{
+	int error = hamming2_result(encoded_data, hamming2);
+	try_change_bit(encoded_data, error);
+	if (try_change_bit(encoded_data, error - 1) == 0)
+		return;
+	try_change_bit(encoded_data, error - 1);
+	try_change_bit(encoded_data, error + 1);
 }
 
-int hamming_decoder(char* dataWithHamming) {
+char* block_decoder(ProtectionData pd)
+{
+	if (hamming1_result(pd.hamming1) == 0)
+		return original_data(pd.hamming1);
+	else
+	{
+		if (pd.parityBit != 0 && pd.parityBit != 3)
+			return original_data(pd.hamming1);
 
+		else
+		{
+			if (pd.parityBit != parity_bit(pd.hamming1, HAMMING1_SIZE))
+			{
+				change_bit_in_data(pd.hamming1, hamming1_result(pd.hamming1));
+				return original_data(pd.hamming1);
+			}
+
+			else
+				two_bits_swapped(pd.hamming1, pd.hamming2);
+		}
+	}
+
+	return original_data(pd.hamming1);
 }
 
-void* block_decoder(ProtectionData* protection_struct) { 
-	// The parity bits aren't the same ---> if((int)protection_struct.parityBit != 3 && (int)protection_struct.parityBit != 0) 
-	if (((*protection_struct).parityBit & 1) ^ (((*protection_struct).parityBit >> 1) & 1)) {
-		return extract_data((*protection_struct).dataWithHamming);
+
+char* decode(ProtectionData* pd, int len)
+{
+	int number_of_blocks = len / BLOCK_SIZE;
+	char* decoded_data = (char*)malloc(number_of_blocks * sizeof(char));
+	char* data_ptr = decoded_data;
+	for (size_t i = 0; i < number_of_blocks; i++)
+	{
+		char* block = block_decoder(pd[i]);
+		while (*block)
+		{
+			*data_ptr++ = *block++;
+		}
 	}
-
-	// the function hamming_decoder only find the place that may be an error
-	int error_place = hamming_decoder((*protection_struct).dataWithHamming);
-
-	if (error_place == 0) { // There is no error
-		return extract_data((*protection_struct).dataWithHamming); // הפונקציה הזו מחלצת את המידע  
-	}
-
-	// now, there is an error and the two parityBit are the same!!!
-	// if the XOR on dataWithHamming is not the same as the first/ second (same) in other words it's equal to 1 - there is one bit flip
-	if (MultyXor((*protection_struct).dataWithHamming) != (*protection_struct).parityBit & 1) {
-		correct_one_bit_flip((*protection_struct).dataWithHamming, error_place);
-	}
-	else {
-		correct_two_bit_flip(protection_struct);
-	}
-
-	return extract_data((*protection_struct).dataWithHamming);
-}
-
-void* decoder(ProtectionData* pd) {
-	int index = 0;
-	int num_of_blocks = DATA_SIZE / BLOCK_SIZE_WITH_HAMMING;
-	while (index < num_of_blocks) {
-		// keep??
-		block_decoder(&pd);
-		pd += BLOCK_SIZE_WITH_HAMMING;
-		index += 1;
-	}
-
+	return decoded_data;
 }
