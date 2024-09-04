@@ -127,7 +127,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="decoder.c" />
+    <ClCompile Include="encoder.c" />
     <ClCompile Include="EncoderDecoder.c" />
+    <ClCompile Include="LogHistory.c" />
+    <ClCompile Include="tests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="decoder.h" />
+    <ClInclude Include="doctest.h" />
+    <ClInclude Include="encoder.h" />
+    <ClInclude Include="files.h" />
+    <ClInclude Include="LogHistory.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
