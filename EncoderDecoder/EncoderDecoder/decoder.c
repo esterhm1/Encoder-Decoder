@@ -69,6 +69,25 @@ void change_bit_in_data(char* data, int place)
 {
 	data[(place - 1) / 8] ^= (1 << ((8 - place) % 8));
 }
+
+void toggle_parity_bit_of_all_the_data(int index) {
+	if (index < 0 || index > 1) {
+		printf("Index out of bounds\n");
+		return;
+	}
+
+	pd->parityBit ^= (1 << index);  
+}
+
+void toggle_hamming2_bit(MyType* bitField, int index) {
+	if (index < 0 || index >= sizeof(MyType) * 8) {
+		printf("Index out of bounds\n");
+		return;
+	}
+
+	*bitField ^= (1 << index);
+}
+
 int try_change_bit(char* data, int place)
 {
 	change_bit_in_data(data, place);

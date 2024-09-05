@@ -5,6 +5,8 @@
 int hamming1_result(char* encoded_data);
 char* original_data(char* encoded_data);
 void change_bit_in_data(char* data, int place);
+void toggle_hamming2_bit(MyType* bitField, int index);
+void toggle_parity_bit_of_all_the_data(int index);
 void two_bits_swapped(char* encoded_data, char* hamming2);
 int hamming2_result(char* data, char* hamming);
 char* block_decoder(ProtectionData pd);
