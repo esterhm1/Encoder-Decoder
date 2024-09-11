@@ -2,6 +2,7 @@
 #include "encoder.h"
 
 
+
 //calculate the parity bit of the block (Multy_Xor)
 MyType parity_bit_of_data(char* data, size_t length) {
 	int parity = 0;
@@ -9,7 +10,7 @@ MyType parity_bit_of_data(char* data, size_t length) {
 	for (size_t i = 0; i < NUM_BYTES(length); ++i) {
 		unsigned char byte = data[i];
 		size_t bits_in_current_byte = (i == NUM_BYTES(length) - 1) ? (length % 8) : 8;
-		for (size_t bit = 0; bit < bits_in_current_byte; ++bit) {
+		for (size_t bit = 0; bit < 8; ++bit) {
 			uint8_t bit_value = (byte >> bit) & 1;
 			parity ^= bit_value;
 		}
@@ -22,10 +23,10 @@ MyType parity_bit_of_data(char* data, size_t length) {
 
 
 
-int calculate_number_of_parity_bits_for_block()
+int calculate_number_of_parity_bits_for_block(int size)
 {
 	int count = 0;
-	while ((1 << count) < (BLOCK_SIZE + count + 1)) {
+	while ((1 << count) < (size + count + 1)) {
 		count++;
 	}
 
@@ -51,9 +52,9 @@ int get_bit_value(char* data, int bitPosition) {
 
 	int byteIndex = (bitPosition) / 8;
 	int bitIndex = 7 - ((bitPosition) % 8);
-	if (byteIndex < 0 || byteIndex >= sizeof(data)) {
+	/*if (byteIndex < 0 || byteIndex >= sizeof(data)) {
 		return -1;
-	}
+	}*/
 
 	unsigned char byte = data[byteIndex];
 	unsigned char mask = 1 << (bitIndex);
@@ -145,32 +146,65 @@ void block_encode(void* block, int index)
 	pd[index].hamming2 = hamming2_encode(pd[index].hamming1);
 }
 
+void write_protection_data_to_file(const char* file_name,ProtectionData*protection, int final_blocks_num)
+{
+	FILE* file = NULL;
+	errno_t err;
+
+	// פתיחת קובץ בינארי במצב כתיבה
+	err = fopen_s(&file, file_name, "wb");
+
+	// בדיקת אם הקובץ נפתח בהצלחה
+	if (err != 0) {
+		perror("Error opening file");
+		return 1;
+	}
+
+	for (size_t i = 0; i < final_blocks_num; i++)
+	{
+		size_t result = fwrite(&protection[i], sizeof(ProtectionData), 1, file);
+		if (result != 1) {
+			perror("Error writing to file");
+			fclose(file);
+			return 1;
+		}
+	}
+
+	fclose(file);
+}
+
+
 
 void encode(char* data, long length) {
-	// חישוב מספר הבלוקים המלאים
+
+	if (data == NULL)
+	{
+		pd = NULL;
+		return;
+	}
+	
 	size_t full_blocks = length / BLOCK_SIZE;
-	// חישוב הגודל של הבלוק האחרון אם הוא חלקי
 	size_t last_block_size = length % BLOCK_SIZE;
+	size_t final_blocks_num = full_blocks;
+	if (last_block_size)
+		final_blocks_num++;
 
 
-	// הקצה זיכרון ל-ProtectionData עבור כל הבלוקים המלאים
-	pd = (ProtectionData*)malloc((full_blocks + 1) * sizeof(ProtectionData));
+	pd = (ProtectionData*)malloc((final_blocks_num) * sizeof(ProtectionData));
 	if (pd == NULL) {
 		perror("Error allocating memory");
 		return;
 	}
 
 
-	// קידוד בלוקים מלאים
 	for (size_t i = 0; i < full_blocks; i++) {
 		block_encode(data, i);
 		data += BLOCK_SIZE / 8;
 	}
 
-	// טיפול בבלוק האחרון אם הוא חלקי
-	if (last_block_size > 0) {
+	if (last_block_size > 0) 
+	{
 
-		// יצירת בלוק חדש בגודל BLOCK_SIZE
 		char* last_block = (char*)malloc((BLOCK_SIZE / 8));
 		if (last_block == NULL) {
 			perror("Error allocating memory for last block");
@@ -178,20 +212,20 @@ void encode(char* data, long length) {
 			return;
 		}
 
-		// אתחול יתרת הבלוק לאפסים
 		memset(last_block, 0, NUM_BYTES(BLOCK_SIZE));
 
-		// העתקת הבלוק האחרון מהנתונים
 		memcpy(last_block, data, NUM_BYTES(last_block_size));
 
 
-		// קידוד הבלוק האחרון
 		block_encode(last_block, full_blocks);
 
-		// ניקוי
 		free(last_block);
 	}
+
+	write_protection_data_to_file("output.bin",pd, final_blocks_num);
+	free(pd);
 }
+
 
 
 

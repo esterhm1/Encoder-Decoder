@@ -1,2 +1,3 @@
-﻿  EncoderDecoder.c
+﻿cl : command line  warning D9002: ignoring unknown option '-fsycl'
+  EncoderDecoder.cpp
   EncoderDecoder.vcxproj -> C:\Users\user1\Desktop\encoder_decoder_WD\EncoderDecoder\EncoderDecoder\x64\Debug\EncoderDecoder.exe

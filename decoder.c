@@ -81,7 +81,12 @@ char* original_data(char* encoded_data)
 
 void change_bit_in_data(char* data, int place)
 {
-	data[(place - 1) / 8] ^= (1 << ((8 - place) % 8));
+	if (place >= 0 && place <= HAMMING1_SIZE)
+		data[(place - 1) / 8] ^= (1 << (8 - place % 8));
+	if (place % 8 == 0)
+	{
+		data[(place - 1) / 8] ^= 1;
+	}
 }
 
 
@@ -90,7 +95,7 @@ int try_change_bit(char* data, int place)
 
 	change_bit_in_data(data, place);
 	return  hamming1_result(data);
-	
+
 }
 
 
@@ -98,7 +103,7 @@ void two_bits_swapped(char* encoded_data, MyType hamming2)
 {
 	int error = hamming2_result(encoded_data, hamming2);
 	try_change_bit(encoded_data, error);
-	if (try_change_bit(encoded_data, error - 1)==0)
+	if (try_change_bit(encoded_data, error - 1) == 0)
 		return;
 	try_change_bit(encoded_data, error - 1);
 	try_change_bit(encoded_data, error + 1);
@@ -107,7 +112,11 @@ void two_bits_swapped(char* encoded_data, MyType hamming2)
 char* block_decoder(ProtectionData pd)
 {
 	if (((pd.parityBit & 1) ^ (pd.parityBit >> 1) & 1))
+	{
+		printf("error in parity bit\n");
 		return original_data(pd.hamming1);
+	}
+
 	else
 	{
 		unsigned int error_place = hamming1_result(pd.hamming1);
@@ -121,8 +130,8 @@ char* block_decoder(ProtectionData pd)
 		{
 			if (pd.parityBit != parity_bit_of_data(pd.hamming1, HAMMING1_SIZE))
 			{
-				
-				printf("bit flip in %d\n",error_place);
+
+				printf("bit flip in %d\n", error_place);
 				change_bit_in_data(pd.hamming1, error_place);
 				return original_data(pd.hamming1);
 			}
@@ -131,25 +140,53 @@ char* block_decoder(ProtectionData pd)
 				printf("two bits swapped\n");
 				two_bits_swapped(pd.hamming1, pd.hamming2);
 			}
-				
+
 		}
 	}
 	return original_data(pd.hamming1);
 }
 
+ProtectionData* read_protection_data_from_file(const char* file_name, int number_of_blocks)
+{
+	ProtectionData* protection = (ProtectionData*)malloc(sizeof(ProtectionData) * number_of_blocks);
+	FILE* file = NULL;
+	errno_t err;
+
+	// פתיחת קובץ בינארי במצב כתיבה
+	err = fopen_s(&file, "output.bin", "rb");
+
+	// בדיקת אם הקובץ נפתח בהצלחה
+	if (err != 0) {
+		perror("Error opening file");
+		return 1;
+	}
+
+	for (size_t i = 0; i < number_of_blocks; i++)
+	{
+		fread(&protection[i], sizeof(ProtectionData), 1, file);
+
+	}
+	fclose(file);
+	return protection;
+}
 
 
-char* decode(ProtectionData* pd, int len)
+
+char* decode(const char* file_name,int len)
 {
 	int number_of_blocks = len / BLOCK_SIZE;
 	if (len % BLOCK_SIZE)
 		number_of_blocks++;
+
+	ProtectionData* protection = read_protection_data_from_file(file_name, number_of_blocks);
+	if (protection == NULL)
+		return NULL;
 	char* decoded_data = (char*)malloc(len);
-	char* data_ptr=decoded_data;
+	char* data_ptr = decoded_data;
 	for (size_t i = 0; i < number_of_blocks; i++)
 	{
-		char* block = block_decoder(pd[i]);
-		int num_bytes = BLOCK_SIZE/8;
+		char* block = block_decoder(protection[i]);
+		int num_bytes = BLOCK_SIZE / 8;
 		memcpy(data_ptr, block, num_bytes);
 		data_ptr += num_bytes;
 
