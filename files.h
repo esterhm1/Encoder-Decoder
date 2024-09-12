@@ -6,7 +6,7 @@
 
 
 // פונקציה לקרוא תוכן של קובץ טקסט לתוך char*
-char* read_file_to_string(const char* filename, long* out_length) {
+char* read_file_to_string(const char* filename, unsigned long long int* out_length) {
     FILE* file = NULL;
     errno_t err = fopen_s(&file, filename, "rb"); // פתיחת הקובץ במצב קריאה בינארית
     if (err != 0 || file == NULL) {
@@ -53,7 +53,7 @@ char* read_file_to_string(const char* filename, long* out_length) {
 
 
 // פונקציה לכתוב char* לתוך קובץ טקסט
-int write_string_to_file(const char* filename, const char* data, long length) {
+int write_string_to_file(const char* filename, const char* data, unsigned long long int length) {
     FILE* file = NULL;
     errno_t err = fopen_s(&file, filename, "wb"); // פתיחת הקובץ במצב כתיבה בינארית
     if (err != 0 || file == NULL) {

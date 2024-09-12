@@ -1,26 +1,17 @@
+
 #pragma once
-#pragma once
-#include "Encoder.h"
-#include <stdio.h>  
-#include <stdint.h>
+#include "encoder.h"
 #include <stdbool.h>
 #include <math.h>
-
-#pragma pack(push, 1)
-typedef struct ProtectionData {
-	unsigned char parityBit : 2;
-	unsigned short dataWithHamming : HAMMING1_SIZE;
-	unsigned char oddHamming : HAMMING2_SIZE;
-}ProtectionData;
-#pragma pack(pop)
-
-unsigned int compare_between_original_and_existing_haming_1(unsigned int originalHamming, unsigned int existingHamming);
-unsigned int compare_between_original_and_existing_haming_2(unsigned int originalHamming, unsigned int existingHamming);
-void change_bit_in_data(char* block, unsigned int location);
-int calculateThePositionOfHamming2ToHamming1(int position);
-bool tryChangeBit(char* block, unsigned int parity, unsigned int location);
-void twoBitSwapped(char* block, unsigned int differnceHaming, unsigned int differnceHamingOdd);
-void blockDecoder(char* block, ProtectionData* protection);
-void* decoder(ProtectionData* pd);
-
-
+int hamming1_result(char* encoded_data);
+char* original_data(char* encoded_data);
+void change_bit_in_data(char* data, int place);
+void two_bits_swapped(char* encoded_data, char* hamming2);
+int hamming2_result(char* data, char* hamming);
+char* block_decoder(ProtectionData pd);
+char* decode(ProtectionData* protection, int number_of_blocks);
+void decode_files(const char* file_name);
+ProtectionData* read_protection_data_from_file(const char* file_name, long* number_of_blocks);
+typedef struct BlockData {
+	char data[BLOCK_SIZE / 8];
+}BlockData;
