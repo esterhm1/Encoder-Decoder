@@ -114,7 +114,6 @@ char* block_decoder(ProtectionData pd)
 	if (((pd.parityBit & 1) ^ (pd.parityBit >> 1) & 1))
 	{
 		printf("error in parity bit\n");
-		return original_data(pd.hamming1);
 	}
 
 	else
@@ -123,7 +122,6 @@ char* block_decoder(ProtectionData pd)
 		if (error_place == 0)
 		{
 			printf("valid\n");
-			return original_data(pd.hamming1);
 
 		}
 		else
@@ -133,7 +131,6 @@ char* block_decoder(ProtectionData pd)
 
 				printf("bit flip in %d\n", error_place);
 				change_bit_in_data(pd.hamming1, error_place);
-				return original_data(pd.hamming1);
 			}
 			else
 			{
@@ -170,7 +167,80 @@ ProtectionData* read_protection_data_from_file(const char* file_name, int number
 	return protection;
 }
 
+typedef struct {
+	ProtectionData* protection;
+	BlockData* decoded_data;
+	size_t start;
+	size_t end;
+} ThreadDecodeParams;
 
+DWORD WINAPI thread_decode_block(LPVOID param) {
+	ThreadDecodeParams* params = (ThreadDecodeParams*)param;
+
+	for (size_t i = params->start; i < params->end; i++) {
+		char* block = block_decoder(params->protection[i]);
+		int num_bytes = BLOCK_SIZE / 8;
+		memcpy(params->decoded_data[i].data, block, num_bytes);
+	}
+
+	return 0;
+}
+
+//char* decode(const char* file_name, int len) {
+//	int number_of_blocks = len / BLOCK_SIZE;
+//	if (len % BLOCK_SIZE)
+//		number_of_blocks++;
+//
+//	ProtectionData* protection = read_protection_data_from_file(file_name, number_of_blocks);
+//	if (protection == NULL)
+//		return NULL;
+//
+//	BlockData* decoded_data = (BlockData*)malloc(number_of_blocks * sizeof(BlockData));
+//
+//	// התאמת מספר הטרדים לגודל הדאטה
+//	size_t optimal_thread_count = (number_of_blocks < 8) ? number_of_blocks : 8;
+//
+//	HANDLE* threads = (HANDLE*)malloc(optimal_thread_count * sizeof(HANDLE));
+//	ThreadDecodeParams* thread_params = (ThreadDecodeParams*)malloc(optimal_thread_count * sizeof(ThreadDecodeParams));
+//
+//	size_t blocks_per_thread = number_of_blocks / optimal_thread_count;
+//	size_t remaining_blocks = number_of_blocks % optimal_thread_count;
+//
+//	// יצירת הטרדים בהתאם לגודל הדאטה
+//	for (size_t i = 0; i < optimal_thread_count; i++) {
+//		thread_params[i].protection = protection;
+//		thread_params[i].decoded_data = decoded_data;
+//		thread_params[i].start = i * blocks_per_thread;
+//		thread_params[i].end = (i + 1) * blocks_per_thread;
+//
+//		if (i == optimal_thread_count - 1) {
+//			thread_params[i].end += remaining_blocks;  // בלוקים שנותרו ייכנסו לטרד האחרון
+//		}
+//
+//		threads[i] = CreateThread(NULL, 0, thread_decode_block, &thread_params[i], 0, NULL);
+//		if (threads[i] == NULL) {
+//			perror("Error creating thread");
+//			free(decoded_data);
+//			free(protection);
+//			free(threads);
+//			free(thread_params);
+//			return NULL;
+//		}
+//	}
+//
+//	WaitForMultipleObjects(optimal_thread_count, threads, TRUE, INFINITE);
+//
+//	// סגירת הטרדים
+//	for (size_t i = 0; i < optimal_thread_count; i++) {
+//		CloseHandle(threads[i]);
+//	}
+//
+//	// שחרור הזיכרון
+//	free(threads);
+//	free(thread_params);
+//
+//	return (char*)decoded_data;
+//}
 
 char* decode(const char* file_name,int len)
 {
@@ -181,15 +251,15 @@ char* decode(const char* file_name,int len)
 	ProtectionData* protection = read_protection_data_from_file(file_name, number_of_blocks);
 	if (protection == NULL)
 		return NULL;
-	char* decoded_data = (char*)malloc(len);
-	char* data_ptr = decoded_data;
+	BlockData* decoded_data=(BlockData*)malloc(number_of_blocks*sizeof(BlockData));
+
 	for (size_t i = 0; i < number_of_blocks; i++)
 	{
 		char* block = block_decoder(protection[i]);
 		int num_bytes = BLOCK_SIZE / 8;
-		memcpy(data_ptr, block, num_bytes);
-		data_ptr += num_bytes;
+		memcpy(decoded_data[i].data, block, num_bytes);
 
 	}
 	return decoded_data;
+
 }

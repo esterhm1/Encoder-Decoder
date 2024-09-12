@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 #define _CRT_SECURE_NO_WARNINGS
 #define BLOCK_SIZE 64
 #define HAMMING1_SIZE 72
@@ -45,6 +46,8 @@ typedef struct ProtectionData {
 }ProtectionData;
 
 #pragma pack(pop)
+
+
 
 MyType parity_bit_of_data(const void * data, size_t len);
 int calculate_number_of_parity_bits_for_block(int);

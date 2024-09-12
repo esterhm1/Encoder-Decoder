@@ -1,6 +1,16 @@
 
 #include "encoder.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define NUM_BYTES(x) ((x + 7) / 8) // פונקציה עוזרת לחישוב מספר הבתים הנדרשים
+#define NUM_THREADS 4
 
+typedef struct {
+	char* data;
+	size_t start;
+	size_t end;
+} ThreadData;
 
 
 //calculate the parity bit of the block (Multy_Xor)
@@ -175,6 +185,119 @@ void write_protection_data_to_file(const char* file_name,ProtectionData*protecti
 
 
 
+typedef struct {
+	char* data;
+	size_t start_block;
+	size_t end_block;
+} ThreadParams;
+
+ProtectionData* pd;
+
+DWORD WINAPI thread_encode_block(LPVOID lpParam) {
+	ThreadParams* params = (ThreadParams*)lpParam;
+	char* data = params->data;
+	for (size_t i = params->start_block; i < params->end_block; i++) {
+		block_encode(data, i);
+		data += NUM_BYTES(BLOCK_SIZE);  // מעבר לבלוק הבא
+	}
+	free(params);
+	return 0;
+}
+
+//void encode(char* data, long length) {
+//	if (data == NULL) {
+//		pd = NULL;
+//		return;
+//	}
+//
+//	size_t full_blocks = length / BLOCK_SIZE;
+//	size_t last_block_size = length % BLOCK_SIZE;
+//	size_t final_blocks_num = full_blocks;
+//	if (last_block_size)
+//		final_blocks_num++;
+//
+//	pd = (ProtectionData*)malloc(final_blocks_num * sizeof(ProtectionData));
+//	if (pd == NULL) {
+//		perror("Error allocating memory");
+//		return;
+//	}
+//
+//	SYSTEM_INFO sysinfo;
+//	GetSystemInfo(&sysinfo);
+//	int num_threads = sysinfo.dwNumberOfProcessors;  // מספר הטרדים לפי מספר הליבות
+//
+//	HANDLE* threads = (HANDLE*)malloc(num_threads * sizeof(HANDLE));  // מערך הטרדים
+//	if (threads == NULL) {
+//		perror("Error allocating memory for threads");
+//		free(pd);
+//		return;
+//	}
+//
+//	size_t blocks_per_thread = full_blocks / num_threads;
+//	size_t remaining_blocks = full_blocks % num_threads;
+//
+//	// יצירת טרדים לכל חלק מהבלוקים
+//	for (int i = 0; i < num_threads; i++) {
+//		size_t start_block = i * blocks_per_thread;
+//		size_t end_block = start_block + blocks_per_thread;
+//		if (i == num_threads - 1) {
+//			end_block += remaining_blocks;  // לטרד האחרון נותרו בלוקים נוספים
+//		}
+//
+//		ThreadParams* params = (ThreadParams*)malloc(sizeof(ThreadParams));
+//		if (params == NULL) {
+//			perror("Error allocating memory for thread parameters");
+//			free(pd);
+//			free(threads);
+//			return;
+//		}
+//
+//		params->data = data + start_block * (BLOCK_SIZE / 8);
+//		params->start_block = start_block;
+//		params->end_block = end_block;
+//
+//		// יצירת הטרד
+//		threads[i] = CreateThread(NULL, 0, thread_encode_block, params, 0, NULL);
+//		if (threads[i] == NULL) {
+//			perror("Error creating thread");
+//			free(pd);
+//			free(threads);
+//			free(params);
+//			return;
+//		}
+//	}
+//
+//	WaitForMultipleObjects(num_threads, threads, TRUE, INFINITE);  // המתנה לכל הטרדים
+//
+//	for (int i = 0; i < num_threads; i++) {
+//		CloseHandle(threads[i]);  // סגירת כל טרד
+//	}
+//
+//	// טיפול בבלוק האחרון אם יש בלוק חלקי
+//	if (last_block_size > 0) {
+//		char* last_block = (char*)malloc(NUM_BYTES(BLOCK_SIZE));
+//		if (last_block == NULL) {
+//			perror("Error allocating memory for last block");
+//			free(pd);
+//			free(threads);
+//			return;
+//		}
+//
+//		memset(last_block, 0, NUM_BYTES(BLOCK_SIZE));
+//		memcpy(last_block, data + full_blocks * (BLOCK_SIZE / 8), NUM_BYTES(last_block_size));
+//		block_encode(last_block, full_blocks);
+//		free(last_block);
+//	}
+//
+//	// כתיבה לקובץ
+//	write_protection_data_to_file("output.bin", pd, final_blocks_num);
+//
+//	// שחרור זיכרון
+//	free(pd);
+//	free(threads);
+//}
+
+
 void encode(char* data, long length) {
 
 	if (data == NULL)
@@ -182,7 +305,7 @@ void encode(char* data, long length) {
 		pd = NULL;
 		return;
 	}
-	
+
 	size_t full_blocks = length / BLOCK_SIZE;
 	size_t last_block_size = length % BLOCK_SIZE;
 	size_t final_blocks_num = full_blocks;
@@ -190,6 +313,7 @@ void encode(char* data, long length) {
 		final_blocks_num++;
 
 
+	pd = (ProtectionData*)malloc((full_blocks + 1) * sizeof(ProtectionData));
 	pd = (ProtectionData*)malloc((final_blocks_num) * sizeof(ProtectionData));
 	if (pd == NULL) {
 		perror("Error allocating memory");
@@ -197,34 +321,39 @@ void encode(char* data, long length) {
 	}
 
 
+
 	for (size_t i = 0; i < full_blocks; i++) {
 		block_encode(data, i);
 		data += BLOCK_SIZE / 8;
 	}
 
-	if (last_block_size > 0) 
-	{
 
-		char* last_block = (char*)malloc((BLOCK_SIZE / 8));
-		if (last_block == NULL) {
-			perror("Error allocating memory for last block");
-			free(pd);
-			return;
+	if (last_block_size > 0) {
+		if (last_block_size > 0)
+		{
+
+			char* last_block = (char*)malloc((BLOCK_SIZE / 8));
+			if (last_block == NULL) {
+				perror("Error allocating memory for last block");
+				free(pd);
+				return;
+			}
+
+			memset(last_block, 0, NUM_BYTES(BLOCK_SIZE));
+
+			memcpy(last_block, data, NUM_BYTES(last_block_size));
+
+
+			block_encode(last_block, full_blocks);
+
+			free(last_block);
 		}
 
-		memset(last_block, 0, NUM_BYTES(BLOCK_SIZE));
-
-		memcpy(last_block, data, NUM_BYTES(last_block_size));
-
-
-		block_encode(last_block, full_blocks);
-
-		free(last_block);
+		write_protection_data_to_file("output.bin", pd, final_blocks_num);
+		free(pd);
 	}
-
-	write_protection_data_to_file("output.bin",pd, final_blocks_num);
-	free(pd);
 }
+
 
 
 
@@ -247,3 +376,7 @@ void binary_represent(void* data, int bits_number) {
 
 	printf("\n");
 }
+
+
+
+
