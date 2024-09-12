@@ -35,6 +35,10 @@ int get_adjusted_index(int index, int skipped) {
 }
 int get_bit_value(char* data, int bitPosition) {
 	bitPosition--;
+	// Pointer conversion to unsigned char*to access the data as bytes
+	const unsigned char* bytePtr = (const unsigned char*) data;
+
+	// Calculate the position of the byte and the bit within the byte.
 	int byteIndex = (bitPosition) / 8;
 	int bitIndex = 7 - ((bitPosition) % 8);
 	if (byteIndex < 0 || byteIndex >= sizeof(data)) {
@@ -43,7 +47,10 @@ int get_bit_value(char* data, int bitPosition) {
 
 	unsigned char byte = data[byteIndex];
 	unsigned char mask = 1 << (bitIndex);
+
+	// Using a mask to check the corresponding bit value
 	int bitValue = (byte & mask) >> bitIndex;
+
 	return bitValue;
 }
 void hamming1_encode(char* data, int index) {
@@ -62,12 +69,23 @@ void hamming1_encode(char* data, int index) {
 				//check if the current bit should be calculated as a part of this parity bit
 				if (EQUALS_TO_PARITY_BIT(i, j)) {
 					this_parity_bit ^= get_bit_value(data, index);
-				}
-			}
+		}
+	}
 			//save the parity bit value in the appropriate place
 			if (this_parity_bit) {
 				(pd[index].hamming1)[(i - 1) / 8] |= 1 << ((8 - i) % 8);
-			}
+}
+
+void printBinary(unsigned int num) {
+	const int BITS = sizeof(num) * 8;  // The number of bits in unsigned int
+
+	// Print the bit from the MSB to the LSB
+	for (int i = BITS - 1; i >= 0; --i) {
+		printf("%d", (num >> i) & 1);
+
+		// Space after 8 bits
+		if (i % 8 == 0 && i != 0) {
+			printf(" ");
 		}
 		//if its not a parity bit
 		else
@@ -75,7 +93,7 @@ void hamming1_encode(char* data, int index) {
 			//save the bit value in the appropriate place
 			if (get_bit_value(data, get_adjusted_index(i, 1))) {
 				pd[index].hamming1[(i - 1) / 8] |= 1 << ((8 - i) % 8);
-			}
+	}
 		}
 	}
 }
@@ -265,100 +283,7 @@ void block_encode(void* block, int index)
 //		free(last_block);
 //	}
 //}
-#include <windows.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-// פונקציה עבור כל טרד
-typedef struct {
-	void* block;
-	int index;
-} ThreadParams;
-DWORD WINAPI thread_encode_block(LPVOID param) {
-	ThreadParams* params = (ThreadParams*)param;
-	block_encode(params->block, params->index);
-	free(params->block);  // שחרור הזיכרון של הבלוק אחרי הקידוד
-	free(params);  // שחרור הזיכרון של הפרמטרים אחרי סיום העבודה
-	return 0;
-}
-void encode(char* data, long length) {
-	if (data == NULL) {
-		pd = NULL;
-		return;
-	}
-	size_t full_blocks = length / BLOCK_SIZE;
-	size_t last_block_size = length % BLOCK_SIZE;
-	size_t final_blocks_num = full_blocks;
-	if (last_block_size)
-		final_blocks_num++;
-	pd = (ProtectionData*)malloc(final_blocks_num * sizeof(ProtectionData));
-	if (pd == NULL) {
-		perror("Error allocating memory");
-		return;
-	}
-	HANDLE* threads = (HANDLE*)malloc(full_blocks * sizeof(HANDLE));  // מערך הטרדים
-	if (threads == NULL) {
-		perror("Error allocating memory for threads");
-		free(pd);
-		return;
-	}
-	// יצירת טרדים לכל בלוק
-	for (size_t i = 0; i < full_blocks; i++) {
-		// הכנת הבלוק הנוכחי
-		char* block = (char*)malloc(NUM_BYTES(BLOCK_SIZE));
-		if (block == NULL) {
-			perror("Error allocating memory for block");
-			free(pd);
-			free(threads);
-			return;
-		}
-		memcpy(block, data, NUM_BYTES(BLOCK_SIZE));  // העתקת הדאטה לבלוק
-		ThreadParams* params = (ThreadParams*)malloc(sizeof(ThreadParams));
-		if (params == NULL) {
-			perror("Error allocating memory for thread parameters");
-			free(pd);
-			free(threads);
-			free(block);
-			return;
-		}
-		params->block = block;
-		params->index = i;
-		// יצירת הטרד
-		threads[i] = CreateThread(NULL, 0, thread_encode_block, params, 0, NULL);
-		if (threads[i] == NULL) {
-			perror("Error creating thread");
-			free(pd);
-			free(threads);
-			free(block);
-			free(params);
-			return;
-		}
-		data += BLOCK_SIZE / 8;  // מעבר לבלוק הבא
-	}
-	WaitForMultipleObjects(full_blocks, threads, TRUE, INFINITE);  // המתנה לכל הטרדים
-	for (size_t i = 0; i < full_blocks; i++) {
-		CloseHandle(threads[i]);  // סגירת כל טרד
-	}
-	// טיפול בבלוק האחרון אם יש בלוק חלקי
-	if (last_block_size > 0) {
-		char* last_block = (char*)malloc(NUM_BYTES(BLOCK_SIZE));
-		if (last_block == NULL) {
-			perror("Error allocating memory for last block");
-			free(pd);
-			free(threads);
-			return;
-		}
-		memset(last_block, 0, NUM_BYTES(BLOCK_SIZE));
-		memcpy(last_block, data, NUM_BYTES(last_block_size));
-		block_encode(last_block, full_blocks);
-		free(last_block);
-	}
-	// כתיבה לקובץ
-	//write_protection_data_to_file("output.bin", pd, final_blocks_num);
-	// שחרור זיכרון
-	free(pd);
-	free(threads);
-}
+
 void binary_represent(void* data, int bits_number) {
 	unsigned char* byte_ptr = (unsigned char*)data;
 	int total_bytes = (bits_number + 7) / 8;

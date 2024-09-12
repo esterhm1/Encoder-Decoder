@@ -140,6 +140,12 @@
     <ClCompile Include="decoder.c" />
     <ClCompile Include="encoder.c" />
     <ClCompile Include="EncoderDecoder.c" />
+    <ClCompile Include="LogHistory.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Decoder.h" />
+    <ClInclude Include="Encoder.h" />
+    <ClInclude Include="LogHistory.h" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="decoder.h" />
